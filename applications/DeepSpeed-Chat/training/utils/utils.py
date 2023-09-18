@@ -6,7 +6,7 @@ import os
 import torch
 import random
 import numpy as np
-from transformers import set_seed, AutoTokenizer
+from transformers import set_seed, AutoTokenizer, BloomTokenizerFast
 import json
 import deepspeed
 from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
@@ -47,12 +47,17 @@ def get_tokenizer(model_name_or_path, fast_tokenizer=True):
     if "llama" in model_name_or_path:
         from transformers.models.llama import LlamaTokenizer
         tokenizer = LlamaTokenizer.from_pretrained(
-            model_name_or_path, fast_tokenizer=fast_tokenizer)
+            model_name_or_path, fast_tokenizer=fast_tokenizer, trust_remote_code=True, )
         if tokenizer.pad_token is None:
             # assert tokenizer.eos_token is not None
             # tokenizer.add_special_tokens({'pad_token': tokenizer.eos_token})
             tokenizer.add_special_tokens({'pad_token': '[PAD]'})
             tokenizer.padding_side = 'right'
+    elif "bloom" in model_name_or_path:
+        tokenizer = BloomTokenizerFast.from_pretrained(model_name_or_path,
+                                                    # padding_side='right', # 'right' by default
+                                                    use_fast=False,
+                                                    trust_remote_code=True, )
     else:
         tokenizer = AutoTokenizer.from_pretrained(
             model_name_or_path, fast_tokenizer=fast_tokenizer)

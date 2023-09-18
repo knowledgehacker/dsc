@@ -26,15 +26,21 @@ def get_train_ds_config(offload,
     device = "cpu" if offload else "none"
     zero_opt_dict = {
         "stage": stage,
-        "offload_param": {
-            "device": device
-        },
         "offload_optimizer": {
             "device": device
         },
-        "stage3_param_persistence_threshold": 1e4,
-        "stage3_max_live_parameters": 3e7,
-        "stage3_prefetch_bucket_size": 3e7,
+        "offload_param": {
+            "device": device
+        },
+        "overlap_comm": False,
+        "contiguous_gradients": True,
+        "sub_group_size": 5e8,
+        "reduce_bucket_size": "auto",
+        "stage3_prefetch_bucket_size": "auto",
+        "stage3_param_persistence_threshold": "auto",
+        "stage3_max_live_parameters": 5e8,
+        "stage3_max_reuse_distance": 5e8,
+        "stage3_gather_16bit_weights_on_model_save": True,
         "memory_efficient_linear": False
     }
     if enable_mixed_precision_lora:
@@ -47,9 +53,8 @@ def get_train_ds_config(offload,
         "train_micro_batch_size_per_gpu": MICRO_BATCH_SIZE,
         "steps_per_print": 10,
         "zero_optimization": zero_opt_dict,
-        "fp16": {
-            "enabled": True,
-            "loss_scale_window": 100
+        "bf16": {
+            "enabled": True
         },
         "gradient_clipping": 1.0,
         "prescale_gradients": False,
@@ -74,7 +79,7 @@ def get_eval_ds_config(offload, stage=0):
     device = "cpu" if offload else "none"
     zero_opt_dict = {
         "stage": stage,
-        "stage3_param_persistence_threshold": 1e4,
+        "stage3_param_persistence_threshold": "auto",
         "offload_param": {
             "device": device
         },
@@ -85,7 +90,7 @@ def get_eval_ds_config(offload, stage=0):
         "train_micro_batch_size_per_gpu": MICRO_BATCH_SIZE,
         "steps_per_print": 10,
         "zero_optimization": zero_opt_dict,
-        "fp16": {
+        "bf16": {
             "enabled": True
         },
         "gradient_clipping": 1.0,
