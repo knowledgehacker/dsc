@@ -88,7 +88,7 @@ def save_hf_format(model, tokenizer, args, sub_folder=""):
     model_to_save = model.module if hasattr(model, 'module') else model
     CONFIG_NAME = "config.json"
     WEIGHTS_NAME = "pytorch_model.bin"
-    output_dir = os.path.join(args.output_dir, sub_folder)
+    output_dir = os.path.join(args.checkpoint_dir, sub_folder)
     os.makedirs(output_dir, exist_ok=True)
     output_model_file = os.path.join(output_dir, WEIGHTS_NAME)
     output_config_file = os.path.join(output_dir, CONFIG_NAME)
@@ -273,7 +273,7 @@ def moving_average(model, model_ema, beta=0.992, device=None, zero_stage=0):
                 param_ema.data.copy_(torch.lerp(data, param_ema.data, beta))
 
 
-def save_zero_three_model(model_ema, global_rank, save_dir, zero_stage=0):
+def save_zero3_model(model_ema, global_rank, save_dir, zero_stage=0):
     zero_stage_3 = (zero_stage == 3)
     os.makedirs(save_dir, exist_ok=True)
     WEIGHTS_NAME = "pytorch_model.bin"

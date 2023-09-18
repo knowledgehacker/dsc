@@ -24,7 +24,7 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from utils.model.model_utils import create_critic_model
 from utils.data.data_utils import create_prompt_dataset, DataCollatorReward
-from utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero_three_model, load_hf_tokenizer
+from utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero3_model, load_hf_tokenizer
 from utils.ds_utils import get_train_ds_config
 #from utils.module.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters, make_model_gradient_checkpointing_compatible
 
@@ -178,6 +178,10 @@ def parse_args():
                         type=str,
                         default="step2_tensorboard")
     # User defined
+    parser.add_argument("--checkpoint_dir",
+                        type=str,
+                        default=None,
+                        help="Where to checkpoint the model.")
     parser.add_argument(
         '--steps_per_print',
         type=int,
@@ -214,10 +218,8 @@ def main():
                                     enable_tensorboard=args.enable_tensorboard,
                                     tb_path=args.tensorboard_path,
                                     tb_name="step2_model")
-    ds_config[
-        'train_micro_batch_size_per_gpu'] = args.per_device_train_batch_size
-    ds_config[
-        'train_batch_size'] = args.per_device_train_batch_size * torch.distributed.get_world_size(
+    ds_config['train_micro_batch_size_per_gpu'] = args.per_device_train_batch_size
+    ds_config['train_batch_size'] = args.per_device_train_batch_size * torch.distributed.get_world_size(
         ) * args.gradient_accumulation_steps
 
     # If passed along, set the training seed now.
@@ -365,18 +367,18 @@ def main():
             args.global_rank)
         rm_model.tput_timer.update_epoch_count()
 
-    if args.output_dir is not None:
-        print_rank_0('saving model ...', args.global_rank)
-        #rm_model = convert_lora_to_linear_layer(rm_model)
+    print_rank_0('saving model ...', args.global_rank)
+    # rm_model = convert_lora_to_linear_layer(rm_model)
 
+    if args.zero_stage == 3:
+        # for zero stage 3, each gpu only has a part of the model, so we need to save the model on each gpu by using DS-Engine
+        save_zero3_model(rm_model,
+                         args.global_rank,
+                         args.output_dir,
+                         zero_stage=args.zero_stage)
+    else:
         if args.global_rank == 0:
             save_hf_format(rm_model, tokenizer, args)
-        if args.zero_stage == 3:
-            # for zero stage 3, each gpu only has a part of the model, so we need to save the model on each gpu by using DS-Engine
-            save_zero_three_model(rm_model,
-                                  args.global_rank,
-                                  args.output_dir,
-                                  zero_stage=args.zero_stage)
 
 
 if __name__ == "__main__":

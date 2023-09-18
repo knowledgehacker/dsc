@@ -8,7 +8,8 @@ DATA_PATH=/mnt/mlin/bloom/data/Dahoas/rm-static/data
 LLAMA2_PATH=/mnt/mlin/llama-2
 MODEL_PATH=$LLAMA2_PATH/tb-13b-base
 
-OUTPUT=$LLAMA2_PATH/rm_tb-13b
+CHECKPOINT_DIR=$LLAMA2_PATH/checkpoints/rm_tb-13b
+OUTPUT=$LLAMA2_PATH/models/rm_tb-13b
 
 ZERO_STAGE=2
 LR=1e-5
@@ -33,4 +34,6 @@ deepspeed main.py \
    --deepspeed \
    --offload \
    --steps_per_print 1 \
+   --checkpoint_steps 50 \
+   --checkpoint_dir $CHECKPOINT_DIR \
    --output_dir $OUTPUT
