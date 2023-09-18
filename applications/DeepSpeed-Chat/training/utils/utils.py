@@ -98,6 +98,7 @@ def save_hf_format(model, tokenizer, args, sub_folder=""):
             del save_dict[key]
     torch.save(save_dict, output_model_file)
     model_to_save.config.to_json_file(output_config_file)
+    tokenizer.save_pretrained(output_dir)
     tokenizer.save_vocabulary(output_dir)
 
 
@@ -202,6 +203,36 @@ def get_optimizer_grouped_parameters(
             weight_decay,
             "lr":
             lora_lr
+        },
+        {
+            "params": [
+                p for n, p in model.named_parameters()
+                if (any(nd in n
+                        for nd in no_decay_name_list) and p.requires_grad)
+            ],
+            "weight_decay":
+            0.0,
+        },
+    ]
+    if not optimizer_grouped_parameters[1]["params"]:
+        optimizer_grouped_parameters.pop(1)
+    return optimizer_grouped_parameters
+
+
+def get_optimizer_grouped_parameters(
+    model,
+    weight_decay,
+    no_decay_name_list=["bias", "layernorm.weight"],
+):
+    optimizer_grouped_parameters = [
+        {
+            "params": [
+                p for n, p in model.named_parameters()
+                if (not any(nd in n for nd in no_decay_name_list)
+                    and p.requires_grad)
+            ],
+            "weight_decay":
+            weight_decay,
         },
         {
             "params": [

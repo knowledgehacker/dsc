@@ -24,6 +24,8 @@ def get_train_ds_config(offload,
                         tb_name=""):
 
     device = "cpu" if offload else "none"
+    # zero
+    """
     zero_opt_dict = {
         "stage": stage,
         "offload_optimizer": {
@@ -43,14 +45,28 @@ def get_train_ds_config(offload,
         "stage3_gather_16bit_weights_on_model_save": True,
         "memory_efficient_linear": False
     }
+    """
+    zero_opt_dict = {
+        "stage": stage,
+        "offload_optimizer": {
+            "device": device,
+            "pin_memory": True
+        },
+        "allgather_partitions": True,
+        "allgather_bucket_size": 5e8,
+        "reduce_scatter": True,
+        "reduce_bucket_size": 5e8,
+        "overlap_comm": False,
+        "contiguous_gradients": True
+    }
     if enable_mixed_precision_lora:
         zero_opt_dict["zero_quantized_nontrainable_weights"] = True
         if dist.get_world_size() != torch.cuda.device_count():
             zero_opt_dict["zero_hpz_partition_size"] = torch.cuda.device_count(
             )
     return {
-        "train_batch_size": GLOBAL_BATCH_SIZE,
-        "train_micro_batch_size_per_gpu": MICRO_BATCH_SIZE,
+        "train_batch_size": "auto",
+        "train_micro_batch_size_per_gpu": "auto",
         "steps_per_print": 10,
         "zero_optimization": zero_opt_dict,
         "bf16": {
@@ -77,6 +93,7 @@ def get_train_ds_config(offload,
 
 def get_eval_ds_config(offload, stage=0):
     device = "cpu" if offload else "none"
+    """
     zero_opt_dict = {
         "stage": stage,
         "stage3_param_persistence_threshold": "auto",
@@ -85,9 +102,18 @@ def get_eval_ds_config(offload, stage=0):
         },
         "memory_efficient_linear": False
     }
+    """
+    zero_opt_dict = {
+        "stage": stage,
+        "offload_optimizer": {
+            "device": "cpu",
+            "pin_memory": True
+        },
+        "allgather_bucket_size": "auto"
+    }
     return {
-        "train_batch_size": GLOBAL_BATCH_SIZE,
-        "train_micro_batch_size_per_gpu": MICRO_BATCH_SIZE,
+        "train_batch_size": "auto",
+        "train_micro_batch_size_per_gpu": "auto",
         "steps_per_print": 10,
         "zero_optimization": zero_opt_dict,
         "bf16": {

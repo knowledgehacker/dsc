@@ -26,7 +26,7 @@ from utils.model.model_utils import create_critic_model
 from utils.data.data_utils import create_prompt_dataset, DataCollatorReward
 from utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero_three_model, load_hf_tokenizer
 from utils.ds_utils import get_train_ds_config
-from utils.module.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters, make_model_gradient_checkpointing_compatible
+#from utils.module.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters, make_model_gradient_checkpointing_compatible
 
 
 def parse_args():
@@ -150,6 +150,7 @@ def parse_args():
         default=0,
         help='ZeRO optimization stage for Actor model (and clones).')
     ## LoRA for efficient training setting
+    """
     parser.add_argument("--lora_dim",
                         type=int,
                         default=0,
@@ -168,6 +169,7 @@ def parse_args():
         help=
         "Initial LoRA learning rate (after the potential warmup period) to use."
     )
+    """
     ## Tensorboard logging
     parser.add_argument('--enable_tensorboard',
                         action='store_true',
@@ -175,6 +177,18 @@ def parse_args():
     parser.add_argument('--tensorboard_path',
                         type=str,
                         default="step2_tensorboard")
+    # User defined
+    parser.add_argument(
+        '--steps_per_print',
+        type=int,
+        default=10,
+        help='Print log in step')
+    parser.add_argument(
+        '--checkpoint_steps',
+        type=int,
+        default=50,
+        help='Checkpoint frequency in step')
+
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
 
@@ -217,7 +231,7 @@ def main():
                                    ds_config,
                                    args.num_padding_at_beginning,
                                    disable_dropout=args.disable_dropout)
-
+    """
     if args.lora_dim > 0:
         rm_model = convert_linear_layer_to_lora(rm_model,
                                                 args.lora_module_name,
@@ -225,7 +239,7 @@ def main():
         if args.only_optimize_lora:
             rm_model = only_optimize_lora_parameters(rm_model)
             rm_model = make_model_gradient_checkpointing_compatible(rm_model)
-
+    """
     train_phase = 2
     train_dataset, eval_dataset = create_prompt_dataset(
         args.local_rank, args.data_path, args.data_split,
@@ -277,8 +291,8 @@ def main():
         return scores, acc
 
     # Split weights in two groups, one with weight decay and the other not.
-    optimizer_grouped_parameters = get_optimizer_grouped_parameters(
-        rm_model, args.weight_decay, args.lora_learning_rate)
+    #optimizer_grouped_parameters = get_optimizer_grouped_parameters(rm_model, args.weight_decay, args.lora_learning_rate)
+    optimizer_grouped_parameters = get_optimizer_grouped_parameters(rm_model, args.weight_decay)
 
     AdamOptimizer = DeepSpeedCPUAdam if args.offload else FusedAdam
     optimizer = AdamOptimizer(optimizer_grouped_parameters,
@@ -330,6 +344,14 @@ def main():
             rm_model.backward(loss)
             rm_model.step()
             mean_loss += loss.item()
+
+            if (step+1) % args.steps_per_print == 0:
+                print_rank_0(f"Step {step+1}, loss: {mean_loss/(step+1)}", args.global_rank)
+
+            if (step+1) % args.checkpoint_steps == 0:
+                print_rank_0('checkpoint model ...', args.global_rank)
+                save_hf_format(rm_model, tokenizer, args)
+
         print_rank_0(
             f"Epoch {epoch+1}/{args.num_train_epochs} with loss {mean_loss/(step+1)}",
             args.global_rank)
@@ -345,7 +367,7 @@ def main():
 
     if args.output_dir is not None:
         print_rank_0('saving model ...', args.global_rank)
-        rm_model = convert_lora_to_linear_layer(rm_model)
+        #rm_model = convert_lora_to_linear_layer(rm_model)
 
         if args.global_rank == 0:
             save_hf_format(rm_model, tokenizer, args)
