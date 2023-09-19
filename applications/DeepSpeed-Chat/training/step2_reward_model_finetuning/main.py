@@ -352,7 +352,8 @@ def main():
 
             if (step+1) % args.checkpoint_steps == 0:
                 print_rank_0('checkpoint model ...', args.global_rank)
-                save_hf_format(rm_model, tokenizer, args)
+                if args.global_rank == 0:
+                    save_hf_format(rm_model, tokenizer, args.checkpoint_dir)
 
         print_rank_0(
             f"Epoch {epoch+1}/{args.num_train_epochs} with loss {mean_loss/(step+1)}",
@@ -378,7 +379,7 @@ def main():
                          zero_stage=args.zero_stage)
     else:
         if args.global_rank == 0:
-            save_hf_format(rm_model, tokenizer, args)
+            save_hf_format(rm_model, tokenizer, args.output_dir)
 
 
 if __name__ == "__main__":
