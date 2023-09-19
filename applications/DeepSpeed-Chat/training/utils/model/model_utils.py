@@ -72,7 +72,8 @@ def create_critic_model(model_name_or_path,
         critic_model,
         tokenizer,
         num_padding_at_beginning=num_padding_at_beginning)
-
+    # TODO: Why do we need to load from checkpoint?
+    """
     if rlhf_training:
         # load critic model from checkpoint
 
@@ -99,5 +100,6 @@ def create_critic_model(model_name_or_path,
         end = time.time()
         if torch.distributed.get_rank() == 0:
             print(f"> Loading model state dict took {end - start} seconds")
+    """
 
     return critic_model

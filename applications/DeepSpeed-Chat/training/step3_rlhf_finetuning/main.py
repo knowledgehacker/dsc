@@ -41,7 +41,7 @@ import sys
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from utils.data.data_utils import create_prompt_dataset, MiniDataset, DataCollatorRLHF, get_unsupervised_data
-from utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, moving_average, save_zero_three_model, load_hf_tokenizer
+from utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, moving_average, save_zero3_model, load_hf_tokenizer
 from utils.module.lora import convert_lora_to_linear_layer
 from utils.perf import print_throughput_step3
 
@@ -585,7 +585,8 @@ def main():
         if args.enable_test_mode:
             break
 
-    if args.output_dir is not None:
+    output_dir = args.output_dir
+    if output_dir is not None:
         print_rank_0('saving model ...')
         rlhf_engine.actor = convert_lora_to_linear_layer(rlhf_engine.actor)
         rlhf_engine.critic = convert_lora_to_linear_layer(rlhf_engine.critic)
@@ -593,39 +594,43 @@ def main():
             rlhf_engine.actor_ema = convert_lora_to_linear_layer(
                 rlhf_engine.actor_ema)
 
-        if torch.distributed.get_rank() == 0:
-            save_hf_format(rlhf_engine.actor,
-                           tokenizer,
-                           args,
-                           sub_folder='actor')
-            save_hf_format(rlhf_engine.critic,
-                           tokenizer,
-                           args,
-                           sub_folder='critic')
-            if args.enable_ema:
-                save_hf_format(rlhf_engine.actor_ema,
-                               tokenizer,
-                               args,
-                               sub_folder='actor_ema')
 
         if args.actor_zero_stage == 3:
-            save_zero_three_model(rlhf_engine.actor,
+            save_zero3_model(rlhf_engine.actor,
                                   global_rank=args.global_rank,
                                   save_dir=os.path.join(
-                                      args.output_dir, 'actor'),
+                                      output_dir, 'actor'),
                                   zero_stage=args.actor_zero_stage)
             if args.enable_ema:
-                save_zero_three_model(rlhf_engine.actor_ema,
+                save_zero3_model(rlhf_engine.actor_ema,
                                       global_rank=args.global_rank,
                                       save_dir=os.path.join(
-                                          args.output_dir, 'actor_ema'),
+                                          output_dir, 'actor_ema'),
                                       zero_stage=args.actor_zero_stage)
+        else:
+            if torch.distributed.get_rank() == 0:
+                save_hf_format(rlhf_engine.actor,
+                               tokenizer,
+                               output_dir,
+                               sub_folder='actor')
+                if args.enable_ema:
+                    save_hf_format(rlhf_engine.actor_ema,
+                                   tokenizer,
+                                   output_dir,
+                                   sub_folder='actor_ema')
+
         if args.critic_zero_stage == 3:
-            save_zero_three_model(rlhf_engine.critic,
+            save_zero3_model(rlhf_engine.critic,
                                   global_rank=args.global_rank,
                                   save_dir=os.path.join(
-                                      args.output_dir, 'critic'),
+                                      output_dir, 'critic'),
                                   zero_stage=args.critic_zero_stage)
+        else:
+            if torch.distributed.get_rank() == 0:
+                save_hf_format(rlhf_engine.critic,
+                               tokenizer,
+                               output_dir,
+                               sub_folder='critic')
 
 
 if __name__ == "__main__":
