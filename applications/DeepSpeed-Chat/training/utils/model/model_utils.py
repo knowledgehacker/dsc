@@ -4,6 +4,7 @@
 # DeepSpeed Team
 import os
 import math
+import glob
 import torch
 from transformers import (
     AutoConfig,
@@ -73,10 +74,11 @@ def create_critic_model(model_name_or_path,
         tokenizer,
         num_padding_at_beginning=num_padding_at_beginning)
     # TODO: Why do we need to load from checkpoint?
-    """
+
     if rlhf_training:
         # load critic model from checkpoint
 
+        """
         if not os.path.isdir(model_name_or_path):
             model_name_or_path = snapshot_download(model_name_or_path)
         model_ckpt_path = os.path.join(model_name_or_path, 'pytorch_model.bin')
@@ -89,17 +91,28 @@ def create_critic_model(model_name_or_path,
         end = time.time()
         if torch.distributed.get_rank() == 0:
             print(f"> torch.load took {end - start} seconds")
+        """
+
+        model_chunk_files = glob.glob("%s/pytorch_model*.bin" % model_name_or_path, recursive=False)
+        model_ckpt_state_dict = {}
+        for chunk_file in model_chunk_files:
+            model_ckpt_state_dict_chunk = torch.load(chunk_file)
+            model_ckpt_state_dict.update(model_ckpt_state_dict_chunk)
 
         # load critic model from checkpoint with zero-stage 3 compatibility
         # this functionality may be moved to DS checkpoint load API in future
         start = time.time()
+        """
         load_state_dict_into_model(critic_model,
                                    model_ckpt_state_dict,
                                    "",
                                    zero_stage=zero_stage)
+        """
+        critic_model.load_state_dict(model_ckpt_state_dict)
+
         end = time.time()
+
         if torch.distributed.get_rank() == 0:
             print(f"> Loading model state dict took {end - start} seconds")
-    """
 
     return critic_model
