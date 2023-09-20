@@ -15,6 +15,7 @@ class RewardModel(nn.Module):
         self.config = base_model.config
         self.num_padding_at_beginning = num_padding_at_beginning
         if hasattr(self.config, "word_embed_proj_dim"):
+            print("---opt-style")
             # `OPT` models use word_embed_proj_dim as final output
             # https://github.com/huggingface/transformers/blob/main/src/transformers/models/opt/modeling_opt.py#L497
             self.v_head = nn.Linear(self.config.word_embed_proj_dim,
@@ -22,6 +23,7 @@ class RewardModel(nn.Module):
                                     bias=False)
         else:
             # `gpt-neo(x)` models use `hidden_size` attribute names instead of `n_embd``
+            print("---gpt-style")
             self.config.n_embd = self.config.hidden_size if hasattr(
                 self.config, "hidden_size") else self.config.n_embd
             self.v_head = nn.Linear(self.config.n_embd, 1, bias=False)

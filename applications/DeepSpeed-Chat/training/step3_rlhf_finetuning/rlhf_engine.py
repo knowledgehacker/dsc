@@ -105,9 +105,8 @@ class DeepSpeedRLHFEngine():
 
         # Optimizer
         AdamOptimizer = DeepSpeedCPUAdam if self.args.offload else FusedAdam
-        optim_params = get_optimizer_grouped_parameters(
-            actor_model, self.args.actor_weight_decay,
-            self.args.actor_lora_learning_rate)
+        #optim_params = get_optimizer_grouped_parameters(actor_model, self.args.actor_weight_decay, self.args.actor_lora_learning_rate)
+        optim_params = get_optimizer_grouped_parameters(actor_model, self.args.actor_weight_decay)
         optim = AdamOptimizer(optim_params,
                               lr=self.args.actor_learning_rate,
                               betas=(0.9, 0.95))
@@ -229,9 +228,8 @@ class DeepSpeedRLHFEngine():
 
         # Optimizer
         AdamOptimizer = DeepSpeedCPUAdam if self.args.offload else FusedAdam
-        optim_params = get_optimizer_grouped_parameters(
-            critic_model, self.args.critic_weight_decay,
-            self.args.critic_lora_learning_rate)
+        #optim_params = get_optimizer_grouped_parameters(critic_model, self.args.critic_weight_decay, self.args.critic_lora_learning_rate)
+        optim_params = get_optimizer_grouped_parameters(critic_model, self.args.critic_weight_decay)
         optim = AdamOptimizer(optim_params,
                               lr=self.args.critic_learning_rate,
                               betas=(0.9, 0.95))

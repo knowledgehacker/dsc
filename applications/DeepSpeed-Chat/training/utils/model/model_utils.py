@@ -73,7 +73,6 @@ def create_critic_model(model_name_or_path,
         critic_model,
         tokenizer,
         num_padding_at_beginning=num_padding_at_beginning)
-    # TODO: Why do we need to load from checkpoint?
 
     if rlhf_training:
         # load critic model from checkpoint
@@ -96,19 +95,21 @@ def create_critic_model(model_name_or_path,
         model_chunk_files = glob.glob("%s/pytorch_model*.bin" % model_name_or_path, recursive=False)
         model_ckpt_state_dict = {}
         for chunk_file in model_chunk_files:
-            model_ckpt_state_dict_chunk = torch.load(chunk_file)
+            model_ckpt_state_dict_chunk = torch.load(chunk_file, map_location='cpu')
             model_ckpt_state_dict.update(model_ckpt_state_dict_chunk)
+        print("---model_ckpt_state_dict")
+        print(model_ckpt_state_dict.keys())
 
         # load critic model from checkpoint with zero-stage 3 compatibility
         # this functionality may be moved to DS checkpoint load API in future
         start = time.time()
-        """
+
         load_state_dict_into_model(critic_model,
                                    model_ckpt_state_dict,
                                    "",
                                    zero_stage=zero_stage)
-        """
-        critic_model.load_state_dict(model_ckpt_state_dict)
+
+        #critic_model.load_state_dict(model_ckpt_state_dict)
 
         end = time.time()
 
