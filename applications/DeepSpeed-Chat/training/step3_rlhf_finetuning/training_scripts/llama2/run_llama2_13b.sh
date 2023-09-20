@@ -24,7 +24,7 @@ deepspeed --include localhost:0,1 --master_port 28579 main.py \
    --actor_model_name_or_path $ACTOR_MODEL_PATH \
    --critic_model_name_or_path $CRITIC_MODEL_PATH \
    --per_device_generation_batch_size 1 \
-   --per_device_training_batch_size 1 \
+   --per_device_training_batch_size 16 \
    --generation_batches 1 \
    --ppo_epochs 1 \
    --max_answer_seq_len 256 \
@@ -35,7 +35,7 @@ deepspeed --include localhost:0,1 --master_port 28579 main.py \
    --critic_weight_decay 0.1 \
    --num_train_epochs 1 \
    --lr_scheduler_type cosine \
-   --gradient_accumulation_steps 1 \
+   --gradient_accumulation_steps 4 \
    --actor_gradient_checkpointing \
    --critic_gradient_checkpointing \
    --offload_reference_model \
