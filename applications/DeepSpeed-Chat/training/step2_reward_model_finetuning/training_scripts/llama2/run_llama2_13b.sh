@@ -5,11 +5,13 @@
 # DeepSpeed Team
 DATA_PATH=/mnt/mlin/bloom/data/Dahoas/rm-static/data
 
-LLAMA2_PATH=/mnt/mlin/llama-2
-MODEL_PATH=$LLAMA2_PATH/tb-13b-base
+MODEL_SIZE=13b
 
-CHECKPOINT_DIR=$LLAMA2_PATH/checkpoints/rm_tb-13b
-OUTPUT=$LLAMA2_PATH/models/rm_tb-13b
+LLAMA2_PATH=/mnt/mlin/llama-2
+MODEL_PATH=$LLAMA2_PATH/Llama-2-${MODEL_SIZE}-hf
+
+CHECKPOINT_DIR=$LLAMA2_PATH/checkpoints/rm_Llama-2-${MODEL_SIZE}
+OUTPUT=$LLAMA2_PATH/models/rm_raw-${MODEL_SIZE}
 
 ZERO_STAGE=2
 LR=1e-5
