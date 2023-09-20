@@ -24,6 +24,8 @@ def create_hf_model(model_class,
                     rlhf_training=False,
                     disable_dropout=False):
     model_config = AutoConfig.from_pretrained(model_name_or_path)
+    #print("---model_config")
+    #print(model_config)
     if disable_dropout:
         model_config.dropout = 0.0
     # Note: dschf is defined in function scope to avoid global effects
@@ -41,11 +43,14 @@ def create_hf_model(model_class,
             from_tf=bool(".ckpt" in model_name_or_path),
             config=model_config)
 
+    # TODO: do we need this?
+    """
     model.config.end_token_id = tokenizer.eos_token_id
     model.config.pad_token_id = model.config.eos_token_id
     model.resize_token_embeddings(int(
         8 *
         math.ceil(len(tokenizer) / 8.0)))  # make the vocab size multiple of 8
+    """
 
     return model
 
@@ -63,8 +68,7 @@ def create_critic_model(model_name_or_path,
     import time
 
     start = time.time()
-    critic_model = create_hf_model(AutoModel, model_name_or_path, tokenizer,
-                                   ds_config, rlhf_training, disable_dropout)
+    critic_model = create_hf_model(AutoModel, model_name_or_path, tokenizer, ds_config, rlhf_training, disable_dropout)
     end = time.time()
     if torch.distributed.get_rank() == 0:
         print(f"> Creating model from_config took {end - start} seconds")
@@ -97,8 +101,8 @@ def create_critic_model(model_name_or_path,
         for chunk_file in model_chunk_files:
             model_ckpt_state_dict_chunk = torch.load(chunk_file, map_location='cpu')
             model_ckpt_state_dict.update(model_ckpt_state_dict_chunk)
-        print("---model_ckpt_state_dict")
-        print(model_ckpt_state_dict.keys())
+        #print("---model_ckpt_state_dict")
+        #print(model_ckpt_state_dict.keys())
 
         # load critic model from checkpoint with zero-stage 3 compatibility
         # this functionality may be moved to DS checkpoint load API in future

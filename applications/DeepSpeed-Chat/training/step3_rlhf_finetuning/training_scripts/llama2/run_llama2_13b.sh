@@ -5,8 +5,10 @@
 # DeepSpeed Team
 DATA_PATH=/mnt/mlin/bloom/data/Dahoas/rm-static/data
 
-ACTOR_MODEL_PATH=/mnt/mlin/llama-2/tb-13b-chat
-CRITIC_MODEL_PATH=/mnt/mlin/llama-2/checkpoints/rm_tb-13b
+MODEL_SIZE=13b
+
+ACTOR_MODEL_PATH=/mnt/ai2/llama-2/Llama-2-${MODEL_SIZE}-hf
+CRITIC_MODEL_PATH=/mnt/ai2/llama-2/checkpoints/rm_raw-${MODEL_SIZE}
 
 ACTOR_ZERO_STAGE=3
 CRITIC_ZERO_STAGE=2
@@ -21,7 +23,6 @@ deepspeed --include localhost:0,1 --master_port 28579 main.py \
    --data_split 2,4,4 \
    --actor_model_name_or_path $ACTOR_MODEL_PATH \
    --critic_model_name_or_path $CRITIC_MODEL_PATH \
-   --num_padding_at_beginning 1 \
    --per_device_generation_batch_size 1 \
    --per_device_training_batch_size 1 \
    --generation_batches 1 \
