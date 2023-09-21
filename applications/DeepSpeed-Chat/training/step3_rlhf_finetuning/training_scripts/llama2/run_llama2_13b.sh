@@ -61,4 +61,6 @@ nohup sh -c "deepspeed --include localhost:0,1,2,3,4,5,6,7 --master_port 28579 m
    --actor_zero_stage $ACTOR_ZERO_STAGE \
    --critic_zero_stage $CRITIC_ZERO_STAGE \
    --enable_hybrid_engine \
+   --checkpoint_steps 50 \
+   --checkpoint_dir $CHECKPOINT_DIR \
    --output_dir $OUTPUT > rl.log 2>&1" &

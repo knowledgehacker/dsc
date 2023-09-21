@@ -185,6 +185,15 @@ def parse_args():
         type=int,
         default=100,
         help="Number of steps for the warmup in the lr scheduler.")
+    parser.add_argument(
+        "--checkpoint_steps",
+        type=int,
+        default=100,
+        help="Checkpoint frequency in step")
+    parser.add_argument("--checkpoint_dir",
+                        type=str,
+                        default=None,
+                        help="Where to checkpoint the model.")
     parser.add_argument("--output_dir",
                         type=str,
                         default=None,
@@ -413,6 +422,45 @@ def create_datasets(args, tokenizer, train_phase=3):
     return prompt_train_dataloader, unsupervised_train_dataloader, num_total_iters
 
 
+def save_actor_and_critic_models(rlhf_engine, tokenizer, output_dir, args):
+    if args.actor_zero_stage == 3:
+        save_zero3_model(rlhf_engine.actor,
+                         global_rank=args.global_rank,
+                         save_dir=os.path.join(
+                             output_dir, 'actor'),
+                         zero_stage=args.actor_zero_stage)
+        if args.enable_ema:
+            save_zero3_model(rlhf_engine.actor_ema,
+                             global_rank=args.global_rank,
+                             save_dir=os.path.join(
+                                 output_dir, 'actor_ema'),
+                             zero_stage=args.actor_zero_stage)
+    else:
+        if torch.distributed.get_rank() == 0:
+            save_hf_format(rlhf_engine.actor,
+                           tokenizer,
+                           output_dir,
+                           sub_folder='actor')
+            if args.enable_ema:
+                save_hf_format(rlhf_engine.actor_ema,
+                               tokenizer,
+                               output_dir,
+                               sub_folder='actor_ema')
+
+    if args.critic_zero_stage == 3:
+        save_zero3_model(rlhf_engine.critic,
+                         global_rank=args.global_rank,
+                         save_dir=os.path.join(
+                             output_dir, 'critic'),
+                         zero_stage=args.critic_zero_stage)
+    else:
+        if torch.distributed.get_rank() == 0:
+            save_hf_format(rlhf_engine.critic,
+                           tokenizer,
+                           output_dir,
+                           sub_folder='critic')
+
+
 def main():
     args = parse_args()
 
@@ -474,6 +522,7 @@ def main():
 
     non_overflow_step_count = 0
 
+    output_dir = args.output_dir
     for epoch in range(args.num_train_epochs):
         print_rank_0(
             f"Beginning of Epoch {epoch+1}/{args.num_train_epochs}, Total Generation Batches {min(len(prompt_train_dataloader), len(unsupervised_train_dataloader))}",
@@ -585,7 +634,10 @@ def main():
         if args.enable_test_mode:
             break
 
-    output_dir = args.output_dir
+    if (step + 1) % args.checkpoint_steps == 0:
+        print_rank_0('checkpoint model ...', args.global_rank)
+        save_actor_and_critic_models(rlhf_engine, tokenizer, output_dir, args)
+
     if output_dir is not None:
         print_rank_0('saving model ...')
         rlhf_engine.actor = convert_lora_to_linear_layer(rlhf_engine.actor)
@@ -594,43 +646,7 @@ def main():
             rlhf_engine.actor_ema = convert_lora_to_linear_layer(
                 rlhf_engine.actor_ema)
 
-
-        if args.actor_zero_stage == 3:
-            save_zero3_model(rlhf_engine.actor,
-                                  global_rank=args.global_rank,
-                                  save_dir=os.path.join(
-                                      output_dir, 'actor'),
-                                  zero_stage=args.actor_zero_stage)
-            if args.enable_ema:
-                save_zero3_model(rlhf_engine.actor_ema,
-                                      global_rank=args.global_rank,
-                                      save_dir=os.path.join(
-                                          output_dir, 'actor_ema'),
-                                      zero_stage=args.actor_zero_stage)
-        else:
-            if torch.distributed.get_rank() == 0:
-                save_hf_format(rlhf_engine.actor,
-                               tokenizer,
-                               output_dir,
-                               sub_folder='actor')
-                if args.enable_ema:
-                    save_hf_format(rlhf_engine.actor_ema,
-                                   tokenizer,
-                                   output_dir,
-                                   sub_folder='actor_ema')
-
-        if args.critic_zero_stage == 3:
-            save_zero3_model(rlhf_engine.critic,
-                                  global_rank=args.global_rank,
-                                  save_dir=os.path.join(
-                                      output_dir, 'critic'),
-                                  zero_stage=args.critic_zero_stage)
-        else:
-            if torch.distributed.get_rank() == 0:
-                save_hf_format(rlhf_engine.critic,
-                               tokenizer,
-                               output_dir,
-                               sub_folder='critic')
+        save_actor_and_critic_models(rlhf_engine, tokenizer, output_dir, args)
 
 
 if __name__ == "__main__":
